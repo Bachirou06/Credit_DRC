@@ -260,14 +260,18 @@ def find_resource_by_kind(resources: list, label: str, kind: str) -> dict:
     return matches[0]
 
 
-def find_admin1_shapefile_resource(resources: list, country: str) -> dict:
+def find_admin_shapefile_resource(resources: list, country: str, adm_level: int = 1) -> dict:
     """
-    Pick the admin-1 shapefile resource from a COD-AB dataset's resource
-    list. Tries common naming tokens in order, then falls back to any
-    zipped shapefile resource (COD-AB datasets often ship one zip per
-    admin level, or one zip containing all levels).
+    Pick the admin shapefile resource from a COD-AB dataset's resource list.
+    adm_level: 1 for admin-1, 2 for admin-2 (default: 1).
+    Tries common naming tokens in order, then falls back to any zipped shapefile resource.
     """
-    tokens = ["adm1", "admin1", "administrative level 1", "admin 1", "level 1", "level1"]
+    level_tokens = {
+        1: ["adm1", "admin1", "administrative level 1", "admin 1", "level 1", "level1"],
+        2: ["adm2", "admin2", "administrative level 2", "admin 2", "level 2", "level2"],
+    }
+    tokens = level_tokens.get(adm_level, level_tokens[1])
+
     for token in tokens:
         matches = [r for r in resources if token in r["name"].lower()]
         if matches:
@@ -284,9 +288,14 @@ def find_admin1_shapefile_resource(resources: list, country: str) -> dict:
 
     available = [r["name"] for r in resources]
     raise ValueError(
-        f"No admin-1 shapefile resource found for country='{country}'. "
+        f"No admin-{adm_level} shapefile resource found for country='{country}'. "
         f"Available resources: {available}"
     )
+
+
+# Keep backward-compatible alias
+def find_admin1_shapefile_resource(resources: list, country: str) -> dict:
+    return find_admin_shapefile_resource(resources, country, adm_level=1)
 
 
 def download_resource_if_missing(resource: dict, out_dir: Path, country: str,
@@ -345,40 +354,47 @@ def extract_country_tabular(country: str, kind: str = "MPI and Partial Indices",
 
 
 ADMIN1_TOKENS = ["adm1", "admbnda_adm1", "admin1", "adm_1", "administrative1"]
+ADMIN2_TOKENS = ["adm2", "admbnda_adm2", "admin2", "adm_2", "administrative2"]
 SHAPEFILE_COMPANION_EXTS = [".shp", ".shx", ".dbf", ".prj", ".cpg", ".sbn", ".sbx"]
 
 
-def _find_admin1_shp_file(search_dir: Path) -> Path:
+def _find_admin_shp_file(search_dir: Path, adm_level: int = 1) -> Path:
     """
-    Recursively search an extracted boundaries folder for the admin-1
-    .shp file specifically (COD-AB zips often bundle adm0/adm1/adm2 in
-    one archive). Returns the path to the .shp file itself.
+    Recursively search an extracted boundaries folder for the admin .shp file
+    at the requested level (COD-AB zips often bundle adm0/adm1/adm2 together).
+    Returns the path to the .shp file itself.
+    adm_level: 1 for admin-1, 2 for admin-2 (default: 1).
     """
+    tokens = ADMIN2_TOKENS if adm_level == 2 else ADMIN1_TOKENS
+    level_label = f"admin-{adm_level}"
+
     all_shp = list(search_dir.rglob("*.shp"))
     if not all_shp:
         raise ValueError(f"No .shp files found at all under {search_dir}.")
 
-    for token in ADMIN1_TOKENS:
+    for token in tokens:
         matches = [p for p in all_shp if token in p.name.lower()]
         if matches:
             return matches[0]
 
     if len(all_shp) == 1:
-        # Only one shapefile in the archive — assume it's the one we need,
-        # but this should be verified against its attribute table (admin-1
-        # boundaries typically have 8-50+ features; admin-0 has exactly 1).
         print(
-            f"[WARNING] Could not identify an admin-1-specific file by name; "
+            f"[WARNING] Could not identify a {level_label}-specific file by name; "
             f"only one shapefile found ({all_shp[0].name}). Verify its feature "
-            f"count / admin level before using it as admin-1 boundaries."
+            f"count / admin level before using it as {level_label} boundaries."
         )
         return all_shp[0]
 
     raise ValueError(
-        f"Multiple shapefiles found but none matched admin-1 naming tokens "
-        f"{ADMIN1_TOKENS}. Files found: {[p.name for p in all_shp]}. "
-        f"Inspect these manually to identify the admin-1 file."
+        f"Multiple shapefiles found but none matched {level_label} naming tokens "
+        f"{tokens}. Files found: {[p.name for p in all_shp]}. "
+        f"Inspect these manually to identify the {level_label} file."
     )
+
+
+# Keep backward-compatible alias
+def _find_admin1_shp_file(search_dir: Path) -> Path:
+    return _find_admin_shp_file(search_dir, adm_level=1)
 
 
 def _verify_shapefile_companions(shp_path: Path) -> list:
@@ -392,19 +408,21 @@ def _verify_shapefile_companions(shp_path: Path) -> list:
     return missing
 
 
-def extract_country_shapefile(country: str, out_dir=None) -> Path:
+def extract_country_shapefile(country: str, out_dir=None, adm_level: int = 2) -> Path:
     """
     Download (if not already present) the country's admin boundaries
     package into <out_dir>/shapefile/, extract it if it's a zip
     (detected by content, not by declared format), then locate and
-    return the path to the ADMIN-1 .shp file specifically (with its
-    .shx/.dbf/.prj companions alongside it in the same folder).
+    return the path to the admin .shp file at the requested level
+    (with its .shx/.dbf/.prj companions alongside it in the same folder).
+
+    adm_level: 2 for admin-2/territory level (default for DRC), 1 for admin-1/province.
     """
     base_dir = Path(out_dir) if out_dir is not None else DEFAULT_OUT_DIR
     shapefile_dir = base_dir / SHAPEFILE_SUBDIR
 
     resources = get_country_boundary_resources(country)
-    resource = find_admin1_shapefile_resource(resources, country)
+    resource = find_admin_shapefile_resource(resources, country, adm_level=adm_level)
     _warn_if_country_mismatch(resource, country)
     local_path = download_resource_if_missing(resource, shapefile_dir, country)
 
@@ -419,41 +437,47 @@ def extract_country_shapefile(country: str, out_dir=None) -> Path:
             print(f"[SKIP] {extract_dir.name} already extracted, skipping.")
         search_root = extract_dir
     else:
-        # Not a zip — assume the .shp (and companions) were downloaded
-        # directly into shapefile_dir already.
         search_root = shapefile_dir
 
-    admin1_shp = _find_admin1_shp_file(search_root)
-    missing = _verify_shapefile_companions(admin1_shp)
+    admin_shp = _find_admin_shp_file(search_root, adm_level=adm_level)
+    missing = _verify_shapefile_companions(admin_shp)
     if missing:
         print(
-            f"[WARNING] {admin1_shp.name} is missing required companion file(s) "
+            f"[WARNING] {admin_shp.name} is missing required companion file(s) "
             f"{missing} in the same folder — geopandas.read_file() will fail on this."
         )
 
-    return admin1_shp
+    return admin_shp
 
 
 def extract_country_data(country: str, kind: str = "MPI and Partial Indices",
-                          out_dir=None) -> dict:
+                          out_dir=None, adm_level: int = 2) -> dict:
     """
-    Full pipeline for one country: downloads both the admin-1 poverty
-    table (into tabular/) and the admin-1 shapefile (into shapefile/),
+    Full pipeline for one country: downloads both the poverty table (into tabular/)
+    and the admin boundary shapefile (into shapefile/) at the requested admin level,
     skipping anything already on disk.
-    Returns {'tabular': DataFrame, 'shapefile': Path to the admin-1 .shp file}.
+
+    adm_level: 2 for territory-level (default for DRC), 1 for province-level.
+    Returns {'tabular': DataFrame, 'shapefile': Path to the admin .shp file}.
+
+    NOTE: OPHI subnational MPI data for DRC is published at ADM1 (province) level.
+    If adm_level=2 is requested, the ADM2 boundary shapefile is downloaded for spatial
+    joining, but the tabular poverty values will need to be disaggregated or sourced
+    from an alternative dataset (e.g. DHS, MICS) to match ADM2 units.
     """
     df = extract_country_tabular(country, kind=kind, out_dir=out_dir)
-    shp_path = extract_country_shapefile(country, out_dir=out_dir)
+    shp_path = extract_country_shapefile(country, out_dir=out_dir, adm_level=adm_level)
     return {"tabular": df, "shapefile": shp_path}
 
 
 def batch_extract_data(countries: list, kind: str = "MPI and Partial Indices",
-                        out_dir=None) -> dict:
+                        out_dir=None, adm_level: int = 2) -> dict:
     """Run extract_country_data for several countries. Returns {country: result_dict}."""
     results = {}
     for country in countries:
         try:
-            results[country] = extract_country_data(country, kind=kind, out_dir=out_dir)
+            results[country] = extract_country_data(country, kind=kind, out_dir=out_dir,
+                                                     adm_level=adm_level)
         except Exception as exc:
             print(f"[WARN] Failed to extract data for {country}: {exc}")
     return results

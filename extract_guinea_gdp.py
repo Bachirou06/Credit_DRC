@@ -1,8 +1,10 @@
 """
-Extract Kummu v4 GDP data for Guinea WITHOUT a local admin boundary file —
-pulls the ADM0 (country) boundary on the fly from the geoBoundaries API.
+Extract Kummu v4 GDP data for the Democratic Republic of the Congo (DRC)
+WITHOUT a local admin boundary file — pulls the ADM0 (country) boundary
+on the fly from the geoBoundaries API.
 
 geoBoundaries: https://www.geoboundaries.org  (open, free, no API key needed)
+DRC ISO3 code: COD
 """
 
 import requests
@@ -14,8 +16,8 @@ def get_country_boundary(iso3: str, adm_level: str = "ADM0") -> gpd.GeoDataFrame
     Download a country boundary from the geoBoundaries API without needing a
     local shapefile/geopackage.
 
-    iso3: 3-letter ISO country code, e.g. "GIN" for Guinea, "MWI" for Malawi
-    adm_level: "ADM0" (country), "ADM1" (region/province), "ADM2" (district), etc.
+    iso3: 3-letter ISO country code, e.g. "COD" for DRC, "GIN" for Guinea
+    adm_level: "ADM0" (country), "ADM1" (province), "ADM2" (territory), etc.
     """
     api_url = f"https://www.geoboundaries.org/api/current/gbOpen/{iso3}/{adm_level}/"
     meta = requests.get(api_url, timeout=30).json()
@@ -26,25 +28,17 @@ def get_country_boundary(iso3: str, adm_level: str = "ADM0") -> gpd.GeoDataFrame
     return gdf
 
 
-# --- Get Guinea's country boundary (ISO3 = GIN) ---
-guinea_gdf = get_country_boundary("GIN", adm_level="ADM0")
+# --- Get DRC's country boundary (ISO3 = COD) ---
+drc_gdf = get_country_boundary("COD", adm_level="ADM0")
 
-# --- Run the same windowed extraction used for Malawi ---
+# --- Run the windowed extraction for DRC — latest year only (2024) ---
 tif_path = gdp_path + "\\rast_gdpTot_1990_2024_30arcsec.tif"
 
-da_guinea_2015 = preprocess_kummu_gdp_tif_windowed(
-    tif_path=tif_path,
-    year=2015,
-    boundary_gdf=guinea_gdf,
-    out_path=gdp_path + "\\GDP_PPP_2015_Guinea_v4.tif",
-)
-
-da_guinea_2024 = preprocess_kummu_gdp_tif_windowed(
+da_drc_2024 = preprocess_kummu_gdp_tif_windowed(
     tif_path=tif_path,
     year=2024,
-    boundary_gdf=guinea_gdf,
-    out_path=gdp_path + "\\GDP_PPP_2024_Guinea_v4.tif",
+    boundary_gdf=drc_gdf,
+    out_path=gdp_path + "\\GDP_PPP_2024_COD.tif",
 )
 
-print("\nTotal Guinea GDP 2015 (v4, sum of pixels):", float(da_guinea_2015.sum()))
-print("Total Guinea GDP 2024 (v4, sum of pixels):", float(da_guinea_2024.sum()))
+print("\nTotal DRC GDP 2024 (v4, sum of pixels):", float(da_drc_2024.sum()))

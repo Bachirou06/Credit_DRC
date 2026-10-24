@@ -1,5 +1,10 @@
-# CREDIT_layer
+# CREDIT_layer — DRC
 The **Creating the Custom Residential Electricity Demand Indicative Target (CREDIT)** layer as presented in this [open access publication](https://www.mdpi.com/1996-1073/12/7/1395).
+
+> **This repository has been adapted for the Democratic Republic of the Congo (DRC | ISO3: COD).**
+> Original code was developed for Guinea (GIN). Key changes: country boundary → COD, admin-1 provinces,
+> UTM projection → EPSG:32734 (WGS84 / UTM zone 34S), GDP raster → Kummu v4 2024 clipped to DRC,
+> MTF demand targets adjusted for DRC household size (~5.3 people): min 7.6 kWh/capita/year, max 590.4 kWh/capita/year.
 
 Predicting electricity demand in currently un-electrified settlement is a challenge. Many energy access efforts use the multi-tier framework (MTF) as a point of reference; OnSSET in particular, uses this approach as it provides a good basis of (investment) comparison between different levels of access. Access tiers are assigned to settlements based on selection criteria; the most common approach (also adopted in GEP) is to assign tier-targets to urban/rural settlements respectively. This approach allows for limited spatial allocation of targets let alone it does not take into account newly available spatial information.
 
