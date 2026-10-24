@@ -2,7 +2,7 @@
 The **Creating the Custom Residential Electricity Demand Indicative Target (CREDIT)** layer as presented in this [open access publication](https://www.mdpi.com/1996-1073/12/7/1395).
 
 > **This repository has been adapted for the Democratic Republic of the Congo (DRC | ISO3: COD).**
-> Original code was developed for Guinea (GIN). Key changes: country boundary → COD, admin-1 provinces,
+> Original code was developed for Guinea (GIN). Key changes: country boundary → COD, admin-1 provinces (26 — OPHI MPI only available at ADM1),
 > UTM projection → EPSG:32734 (WGS84 / UTM zone 34S), GDP raster → Kummu v4 2024 clipped to DRC,
 > MTF demand targets adjusted for DRC household size (~5.3 people): min 7.6 kWh/capita/year, max 590.4 kWh/capita/year.
 

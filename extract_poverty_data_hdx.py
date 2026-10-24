@@ -408,7 +408,7 @@ def _verify_shapefile_companions(shp_path: Path) -> list:
     return missing
 
 
-def extract_country_shapefile(country: str, out_dir=None, adm_level: int = 2) -> Path:
+def extract_country_shapefile(country: str, out_dir=None, adm_level: int = 1) -> Path:
     """
     Download (if not already present) the country's admin boundaries
     package into <out_dir>/shapefile/, extract it if it's a zip
@@ -416,7 +416,7 @@ def extract_country_shapefile(country: str, out_dir=None, adm_level: int = 2) ->
     return the path to the admin .shp file at the requested level
     (with its .shx/.dbf/.prj companions alongside it in the same folder).
 
-    adm_level: 2 for admin-2/territory level (default for DRC), 1 for admin-1/province.
+    adm_level: 1 for admin-1/province level (default for DRC), 2 for admin-2/territory.
     """
     base_dir = Path(out_dir) if out_dir is not None else DEFAULT_OUT_DIR
     shapefile_dir = base_dir / SHAPEFILE_SUBDIR
@@ -451,19 +451,16 @@ def extract_country_shapefile(country: str, out_dir=None, adm_level: int = 2) ->
 
 
 def extract_country_data(country: str, kind: str = "MPI and Partial Indices",
-                          out_dir=None, adm_level: int = 2) -> dict:
+                          out_dir=None, adm_level: int = 1) -> dict:
     """
     Full pipeline for one country: downloads both the poverty table (into tabular/)
     and the admin boundary shapefile (into shapefile/) at the requested admin level,
     skipping anything already on disk.
 
-    adm_level: 2 for territory-level (default for DRC), 1 for province-level.
+    adm_level: 1 for province-level (default for DRC — OPHI MPI is only at ADM1).
+               Pass adm_level=2 only if using an alternative ADM2 poverty source
+               (e.g. DHS/MICS microdata disaggregated to territory level).
     Returns {'tabular': DataFrame, 'shapefile': Path to the admin .shp file}.
-
-    NOTE: OPHI subnational MPI data for DRC is published at ADM1 (province) level.
-    If adm_level=2 is requested, the ADM2 boundary shapefile is downloaded for spatial
-    joining, but the tabular poverty values will need to be disaggregated or sourced
-    from an alternative dataset (e.g. DHS, MICS) to match ADM2 units.
     """
     df = extract_country_tabular(country, kind=kind, out_dir=out_dir)
     shp_path = extract_country_shapefile(country, out_dir=out_dir, adm_level=adm_level)
@@ -471,7 +468,7 @@ def extract_country_data(country: str, kind: str = "MPI and Partial Indices",
 
 
 def batch_extract_data(countries: list, kind: str = "MPI and Partial Indices",
-                        out_dir=None, adm_level: int = 2) -> dict:
+                        out_dir=None, adm_level: int = 1) -> dict:
     """Run extract_country_data for several countries. Returns {country: result_dict}."""
     results = {}
     for country in countries:
