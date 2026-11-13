@@ -43,10 +43,9 @@ With conda (recommended, because GDAL and rasterio install more easily from cond
 ```bash
 conda env create -f credit_env.yml
 conda activate credit_env
-pip install jupyterlab
 ```
 
-Alternatively, install the packages in `requirements.txt` with pip. The notebooks were last run with Python 3.12, geopandas 1.1, rasterio 1.3 and pandas 3.0.
+`requirements.txt` lists the exact package versions the model was run with (Python 3.12). Use it with pip only if GDAL is already installed on your system.
 
 ### 3. Run the main notebook
 
